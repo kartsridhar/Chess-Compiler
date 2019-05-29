@@ -37,4 +37,55 @@ data Piece = King
            | Bishop
            | Pawn
    deriving (Show, Eq)
-   
+
+-- Parser function to get rid of extra spaces
+whitespace :: Parser ()
+whitespace = skip(many(oneOf[' ', '\t', '\n']))
+
+-- Parser function to get one of the letters from a to h
+posLetter :: Parser Char
+posLetter = (oneOf['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']) <* whitespace
+
+-- Parser function to get one of the digits from 1 to 9
+posDigit :: Parser Int
+posDigit = (many(oneOf['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'])) <* whitespace
+
+chessParser :: Parser Chess
+chessParser = Turn <$ posDigit <*> moveParser <*> moveParser <*> chessParser
+          <|> EndGame <$ string "gg"
+
+moveParser :: Parser Move
+moveParser = Move <$> movepParser <*> quantParser
+         <|> Cslt <$> checkCastle
+         <|> End <$> winnerParser
+
+quantParser :: Parser Quant
+quantParser = Prom <$> specialPieceParser <*> quantParser
+          <|> Chck <$> char '+'
+          <|> Null <$> char ' '
+
+movepParser :: Parser MoveP
+movepParser = Alg <$> pieceParser <*> cellParser
+          <|> Smh <$> cellParser <*> cellParser
+          <|> ALgDis <$> pieceParser <*> cellParser <*> cellParser
+          <|> Tke <$> pieceParser <* char 'x' <*> cellParser
+
+winnerParser :: Parser Winner
+winnerParser = White <$ string "1-0"
+           <|> Black <$ string "0-1"
+           <|> Draw <$ string "1/2-1/2"
+           <|> AO <$ char ' '
+
+cellParser :: Parser Cell
+cellParser = Cell <$> posLetter <*> posDigit
+
+specialPieceParser :: Parser Piece
+specialPieceParser = King <$ char 'k'
+                 <|> Queen <$ char 'q'
+                 <|> Rook <$ char 'r'
+                 <|> Knight <$ char 'n'
+                 <|> Bishop <$ char 'b'
+
+pieceParser :: Parser Piece
+pieceParser = specialPieceParser
+          <|> Pawn <$ char ''
